@@ -1,0 +1,203 @@
+<div class="bt-ipay-flash-wrap">
+	{%  if (fashMessage.message) %}
+		{% set flashType = fashMessage.error == true ? 'danger': 'success' %}
+		<div class="bg-{{flashType}} bt-ipay-flash" style="margin-bottom: 18px;padding: 10px;
+    border: 1px solid transparent;
+    border-radius: 3px;">{{fashMessage.message|e}}</div>
+	{% endif %}
+</div>
+{% if canCapture %}
+<h4>
+	{{ label_capture_form|e }}
+</h4>
+<form action="{{ actionCapture }}" method="post" id="bt-ipay-capture" class="form-horizontal" style="margin-bottom: 20px;">
+
+	<input type="hidden" name="bt-ipay-order-id" id="bt-ipay-order-id" value="{{ orderId }}">
+	<label for="bt-ipay-capture-amount">
+		{{ label_capture_amount|e }}
+	</label>
+	<div class="row">
+		<div class="col-md-10">
+			<input type="number" class="form-control" step="0.01" max="{{ authorizedAmount }}" value="{{ authorizedAmount }}" name="bt-ipay-amount" id="bt-ipay-capture-amount"/>
+		</div>
+		<div class="col-md-2">
+			<button type="submit" data-loading-text="{{ text_loading|e }}" class="btn btn-light bt-ipay-submit-button">
+				{{ label_capture|e }}
+			</button>
+			<button type="submit" form="bt-ipay-cancel"  data-loading-text="{{ text_loading|e }}" class="btn btn-warning bt-ipay-submit-button">
+				{{ label_cancel|e }}
+			</button>
+		</div>
+	</div>
+</form>
+
+<form action="{{ actionCancel }}" method="post" id="bt-ipay-cancel" name="bt-ipay-cancel">
+	<input type="hidden" name="bt-ipay-order-id" id="bt-ipay-order-id" value="{{ orderId }}">
+</form>
+{% endif %}
+
+{% if payments|length > 0 %}
+<h4>{{ payment_history|e }}</h4>
+<div class="table-responsive">
+	<table class="table table-bordered table-striped">
+		<thead>
+			<tr>
+				<th scope="col">
+					{{ label_payment_id|e }}
+				</th>
+				<th scope="col" style="text-align:right;">
+					{{ label_payment_amount|e }}
+				</th>
+				<th scope="col" style="text-align:right;">
+					{{ label_payment_status|e }}
+				</th>
+			</tr>
+		</thead>
+		<tbody>
+			{% for payment in payments %}
+			<tr>
+				<td>
+					{{ payment.ipay_id|e }}
+				</td>
+				<td style="text-align:right;">
+					{{ payment.amount|e }}
+				</td>
+				<td style="text-align:right;">
+					{{ payment.status|e }}
+				</td>
+			</tr>
+			{% if payment.loy_amount > 0 %}
+				<tr>
+				<td>
+					{{ loy_prefix }} {{ payment.loy_id|e }}
+				</td>
+				<td style="text-align:right;">
+					{{ payment.loy_amount|e }}
+				</td>
+				<td style="text-align:right;">
+					{{ payment.loy_status|e }}
+				</td>
+			</tr>
+			{% endif %}
+			{% endfor %}
+	</tbody>
+</table></div>
+{% endif %}
+
+{% if canRefund %}
+<hr>
+<form action="{{ actionRefund }}" method="post" id="bt-ipay-refund" class="form-horizontal" style="margin-bottom: 20px;">
+	<input type="hidden" name="bt-ipay-order-id" id="bt-ipay-order-id" value="{{ orderId }}">
+	<label for="bt-ipay-refund-amount">
+		{{ label_refund_amount|e }}
+	</label>
+	<div class="row">
+		<div class="col-md-11">
+			<input type="number" class="form-control" step="0.01" max="{{ refundAmount }}" value="{{ refundAmount }}" name="bt-ipay-amount" id="bt-ipay-capture-amount"/>
+			{{ label_refund_remaining|e }} <b>{{ refundAmount }}</b>
+		</div>
+		<div class="col-md-1">
+			<button type="submit" class="btn btn-light bt-ipay-submit-button" data-loading-text="{{ text_loading|e }}">
+				{{ label_refund|e }}
+			</button>
+			
+		</div>
+	</div>
+</form>
+{% endif %}
+
+{% if refunds is not empty %}
+<h4>{{ refund_history|e }}</h4>
+<div class="table-responsive">
+	<table class="table table-bordered table-striped">
+		<thead>
+			<tr>
+				<th scope="col">
+					{{ label_refund_id }}
+				</th>
+				<th scope="col" style="text-align:right;">
+					{{ label_refund_amount }}
+				</th>
+			</tr>
+		</thead>
+		<tbody>
+
+			{% for refund in refunds %}
+			<tr>
+				<td>
+					{{ refund.ipay_id|e }}
+				</td>
+				<td style="text-align:right;">
+					{{ refund.amount|e }}
+				</td>
+			</tr>
+			{% endfor %}
+	</tbody>
+</table></div>
+{% endif %}
+
+<script>
+
+	const btIpayOpenPanel = function() {
+		if (window.location.hash == "#open-bt-pay") {
+			const ourTab = $('a[href="#tab-bt_ipay_order_area"]');
+			const parent = ourTab.closest('.nav.nav-tabs');
+			const active = parent.find('.active')
+			active.removeClass('active');
+			active.attr('aria-selected', "false");
+			ourTab.addClass('active');
+			ourTab.attr('aria-selected', "true");
+			parent.parent().find('.tab-pane.active').removeClass('active');
+			parent.parent().find('#tab-bt_ipay_order_area').addClass('active');
+		}
+	}
+	const btIpayRefresh = function()
+	{
+		if (window.location.hash !== "#open-bt-pay") {
+			window.location.href += "#open-bt-pay";
+		}
+		location.reload();
+	}
+	btIpayOpenPanel();
+	const btIpayFlash = function(message, error = false)
+	{
+		let type = 'success';
+		if (error) {
+			type = 'danger';
+		}
+		$('.bt-ipay-flash').remove();
+		$('.bt-ipay-flash-wrap').prepend(`<div class="alert alert-${type} bt-ipay-flash">${message}</div>`);
+	}
+	$("#bt-ipay-capture, #bt-ipay-refund, #bt-ipay-cancel").on('submit', function(e)
+	{
+		const btn = $('.bt-ipay-submit-button');
+		const url = $(this).attr('action');
+		const payload = $(this).serialize();
+		e.preventDefault();
+
+		
+		$.ajax({
+			url,
+			type: "POST", 
+			data: payload,
+			dataType: 'json',
+			beforeSend: function() {
+				btn.button('loading');
+			},
+			complete: function() {
+				btn.button('reset');
+			},
+			success: function(response) {
+				const hasError = response.error || false;
+				if (response.message)
+				{
+					btIpayFlash(response.message, hasError)
+				}
+
+				if (!hasError) {
+					btIpayRefresh();
+				}
+			}
+		})
+	})
+</script>

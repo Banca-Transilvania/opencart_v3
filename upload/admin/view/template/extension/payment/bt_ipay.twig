@@ -1,0 +1,323 @@
+{{ header }}{{ column_left }}
+
+{%  set notMasterConfig = currentStore != 0 %}
+<div id="content">
+	<div class="page-header">
+		<div class="container-fluid">
+			<div class="pull-right">
+				<button type="submit" form="bt-ipay-submit" data-toggle="tooltip" title="{{ button_save|e }}" class="btn btn-primary">
+					<i class="fa fa-save"></i>
+				</button>
+				<a href="{{ cancel }}" data-toggle="tooltip" title="{{ button_cancel|e }}" class="btn btn-default">
+					<i class="fa fa-reply"></i>
+				</a>
+			</div>
+			<h1>{{ heading_title }}</h1>
+			<ul class="breadcrumb">
+				{% for breadcrumb in breadcrumbs %}
+					<li>
+						<a href="{{ breadcrumb.href }}">{{ breadcrumb.text|e }}</a>
+					</li>
+				{% endfor %}
+			</ul>
+		</div>
+	</div>
+	<div class="container-fluid">
+		{% if error_warning %}
+			<div class="alert alert-danger alert-dismissible">
+				<i class="fa fa-exclamation-circle"></i>
+				{{ error_warning|e }}
+				<button type="button" class="close" data-dismiss="alert">&times;</button>
+			</div>
+		{% endif %}
+
+		{% if success %}
+			<div class="alert alert-success bt-ipay-success">
+				{{ success|e }}
+			</div>
+		{% endif %}
+
+		<div class="row" style="margin:15px 0">
+			<label class="control-label" for="bt-ipay-current_store">{{ store|e }}</label>
+			<select id="bt-ipay-current_store" class="form-control">
+				{% for store in stores %}
+					<option data-url="{{ store.url }}" value="{{ store.id|e('html_attr') }}" {% if store.id == currentStore %} selected="selected" {% endif %}>{{ store.name }}</option>
+				{% endfor %}
+			</select>
+		</div>
+		<form action="{{ submit }}" method="post" id="bt-ipay-submit" class="form-horizontal">
+		<div class="panel panel-default">
+			<div class="panel-heading">
+				<h3 class="panel-title">
+					<i class="fa fa-pencil"></i>
+					{{ text_edit|e }}</h3>
+			</div>
+			<div class="panel-body">
+					{% if notMasterConfig %}
+						<div class="form-group">
+							<label class="col-sm-2 control-label" for="bt-ipay-custom-settings">{{ custom_settings|e }}</label>
+							<div class="col-sm-10">
+								<select name="payment_bt_ipay_customStoreConfig" id="bt-ipay-custom-settings" class="form-control">
+									<option value="1" {% if payment_bt_ipay_customStoreConfig == 1 %} selected="selected" {% endif %}>{{ text_enabled }}</option>
+									<option value="0" {% if payment_bt_ipay_customStoreConfig == 0 %} selected="selected" {% endif %}>{{ text_disabled }}</option>
+								</select>
+								<div class="text-small">
+									{{ custom_settings_desc|e }}</div>
+							</div>
+						</div>
+					{% endif %}
+
+
+					<div class="bt-ipay-settings" {% if notMasterConfig and payment_bt_ipay_customStoreConfig == 0 %} style="display:none;" {% endif %}>
+						<div class="form-group">
+							<label class="col-sm-2 control-label" for="bt-ipay-payment-status">{{ payment_status|e }}</label>
+							<div class="col-sm-10">
+								<select name="payment_bt_ipay_enabled" id="bt-ipay-payment-status" class="form-control">
+									<option value="1" {% if payment_bt_ipay_enabled == 1 %} selected="selected" {% endif %}>{{ text_enabled }}</option>
+									<option value="0" {% if payment_bt_ipay_enabled == 0 %} selected="selected" {% endif %}>{{ text_disabled }}</option>
+								</select>
+							</div>
+						</div>
+
+						<div class="form-group">
+							<label class="col-sm-2 control-label" for="bt-ipay-sort-order">{{ payment_sort_order|e }}</label>
+							<div class="col-sm-10">
+								<input type="number" step="1" name="payment_bt_ipay_sort_order" value="{{ payment_bt_ipay_sort_order|e }}" id="bt-ipay-sort-order" class="form-control"/>
+							</div>
+						</div>
+
+						<div class="form-group">
+							<label class="col-sm-2 control-label" for="bt-ipay-payment-title">{{ payment_title|e }}</label>
+							<div class="col-sm-10">
+								<input type="text" name="payment_bt_ipay_title" value="{{ payment_bt_ipay_title|e }}" id="bt-ipay-payment-title" class="form-control"/>
+							</div>
+						</div>
+
+						<div class="form-group">
+							<label class="col-sm-2 control-label" for="bt-ipay-payment-description">{{ payment_description|e }}</label>
+							<div class="col-sm-10">
+								<input type="text" name="payment_bt_ipay_description" value="{{ payment_bt_ipay_description|e }}" id="bt-ipay-payment-description" class="form-control"/>
+							</div>
+						</div>
+
+						<div class="form-group">
+							<label class="col-sm-2 control-label" for="bt-ipay-callback-url">{{ callback_url|e }}</label>
+							<div class="col-sm-10">
+								<input type="text" readonly="readonly" value="{{ callbackUrl|e }}" id="bt-ipay-callback-url" class="form-control"/>
+							</div>
+						</div>
+
+						<div class="form-group">
+							{% set placeholder = payment_bt_ipay_callbackKey|length > 0 ? '•••••••': '' %}
+							<label class="col-sm-2 control-label" for="bt-ipay-callback-key">{{ callback_key|e }}</label>
+							<div class="col-sm-10">
+								<input type="password" placeholder="{{placeholder|e}}" name="payment_bt_ipay_callbackKey" autocomplete="new-password" id="bt-ipay-callback-key" class="form-control"/>
+							</div>
+						</div>
+
+						<div class="form-group">
+							<label class="col-sm-2 control-label" for="bt-ipay-payment-flow">{{ payment_flow|e }}</label>
+							<div class="col-sm-10">
+								<select name="payment_bt_ipay_paymentFlow" id="bt-ipay-payment-flow" class="form-control">
+									<option value="pay" {% if payment_bt_ipay_paymentFlow == 'pay' %} selected="selected" {% endif %}>{{ label_pay|e }}</option>
+									<option value="authorize" {% if payment_bt_ipay_paymentFlow == 'authorize' %} selected="selected" {% endif %}>{{ label_authorize|e }}</option>
+								</select>
+							</div>
+						</div>
+
+						<div class="form-group">
+							<label class="col-sm-2 control-label" for="bt-ipay-cof">{{ label_cof|e }}</label>
+							<div class="col-sm-10">
+								<select name="payment_bt_ipay_cofEnabled" id="bt-ipay-cof" class="form-control">
+									<option value="1" {% if payment_bt_ipay_cofEnabled == 1 %} selected="selected" {% endif %}>{{ text_enabled|e }}</option>
+									<option value="0" {% if payment_bt_ipay_cofEnabled == 0 %} selected="selected" {% endif %}>{{ text_disabled|e }}</option>
+								</select>
+							</div>
+						</div>
+
+						<div class="form-group">
+							<label class="col-sm-2 control-label" for="bt-ipay-test-mode">{{ test_mode|e }}</label>
+							<div class="col-sm-10">
+								<select name="payment_bt_ipay_testMode" id="bt-ipay-test-mode" class="form-control">
+									<option value="1" {% if payment_bt_ipay_testMode == 1 %} selected="selected" {% endif %}>{{ text_enabled|e }}</option>
+									<option value="0" {% if payment_bt_ipay_testMode == 0 %} selected="selected" {% endif %}>{{ text_disabled|e }}</option>
+								</select>
+							</div>
+						</div>
+
+						<div class="form-group ipay-live">
+							<label class="col-sm-2 control-label" for="bt-ipay-auth-key">{{ username|e }}</label>
+							<div class="col-sm-10">
+								<input type="text" name="payment_bt_ipay_authKey" autocomplete="new-password" value="{{ payment_bt_ipay_authKey|e }}" id="bt-ipay-auth-key" class="form-control"/>
+							</div>
+						</div>
+
+						<div class="form-group ipay-live">
+							{% set placeholder = payment_bt_ipay_authPassword|length > 0 ? '•••••••': '' %}
+							<label class="col-sm-2 control-label" for="bt-ipay-auth-password">{{ password|e }}</label>
+							<div class="col-sm-10">
+								<input type="password" placeholder="{{placeholder|e}}" name="payment_bt_ipay_authPassword" autocomplete="new-password" id="bt-ipay-auth-password" class="form-control"/>
+							</div>
+						</div>
+
+						<div class="form-group ipay-test">
+							<label class="col-sm-2 control-label" for="bt-ipay-test-auth-key">{{ test_username|e }}</label>
+							<div class="col-sm-10">
+								<input type="text" name="payment_bt_ipay_testAuthKey" autocomplete="new-password" value="{{ payment_bt_ipay_testAuthKey|e }}" id="bt-ipay-test-auth-key" class="form-control"/>
+							</div>
+						</div>
+
+						<div class="form-group ipay-test">
+							{% set placeholder = payment_bt_ipay_testAuthPassword|length > 0 ? '•••••••': '' %}
+							<label class="col-sm-2 control-label" for="bt-ipay-test-auth-password">{{ test_password|e }}</label>
+							<div class="col-sm-10">
+								<input type="password" placeholder="{{placeholder|e}}" name="payment_bt_ipay_testAuthPassword" autocomplete="new-password" id="bt-ipay-test-auth-password" class="form-control"/>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+
+			<div class="panel panel-default bt-ipay-settings" {% if notMasterConfig and payment_bt_ipay_customStoreConfig == 0 %} style="display:none;" {% endif %}>
+				<div class="panel-heading">
+					<h3 class="panel-title">
+						<i class="fa fa-pencil"></i>
+						{{ text_order_statuses|e }}</h3>
+				</div>
+				<div class="panel-body">
+					<div class="form-group">
+						<label class="col-sm-2 control-label" for="payment_bt_ipay_statusCreated">{{ label_status_created }}</label>
+						<div class="col-sm-10">
+							<select name="payment_bt_ipay_statusCreated" id="payment_bt_ipay_statusCreated" class="form-control">
+								{% for order_status in order_statuses %}
+									{% if order_status.order_status_id == payment_bt_ipay_statusCreated %}
+										<option value="{{ order_status.order_status_id }}" selected="selected">{{ order_status.name }}</option>
+									{% else %}
+										<option value="{{ order_status.order_status_id }}">{{ order_status.name }}</option>
+									{% endif %}
+								{% endfor %}
+							</select>
+						</div>
+					</div>
+
+					<div class="form-group">
+						<label class="col-sm-2 control-label" for="payment_bt_ipay_statusDeposited">{{ label_status_deposited }}</label>
+						<div class="col-sm-10">
+							<select name="payment_bt_ipay_statusDeposited" id="payment_bt_ipay_statusDeposited" class="form-control">
+								{% for order_status in order_statuses %}
+									{% if order_status.order_status_id == payment_bt_ipay_statusDeposited %}
+										<option value="{{ order_status.order_status_id }}" selected="selected">{{ order_status.name }}</option>
+									{% else %}
+										<option value="{{ order_status.order_status_id }}">{{ order_status.name }}</option>
+									{% endif %}
+								{% endfor %}
+							</select>
+						</div>
+					</div>
+
+					<div class="form-group">
+						<label class="col-sm-2 control-label" for="payment_bt_ipay_statusApproved">{{ label_status_approved }}</label>
+						<div class="col-sm-10">
+							<select name="payment_bt_ipay_statusApproved" id="payment_bt_ipay_statusApproved" class="form-control">
+								{% for order_status in order_statuses %}
+									{% if order_status.order_status_id == payment_bt_ipay_statusApproved %}
+										<option value="{{ order_status.order_status_id }}" selected="selected">{{ order_status.name }}</option>
+									{% else %}
+										<option value="{{ order_status.order_status_id }}">{{ order_status.name }}</option>
+									{% endif %}
+								{% endfor %}
+							</select>
+						</div>
+					</div>
+
+					<div class="form-group">
+						<label class="col-sm-2 control-label" for="payment_bt_ipay_statusReversed">{{ label_status_reversed }}</label>
+						<div class="col-sm-10">
+							<select name="payment_bt_ipay_statusReversed" id="payment_bt_ipay_statusReversed" class="form-control">
+								{% for order_status in order_statuses %}
+									{% if order_status.order_status_id == payment_bt_ipay_statusReversed %}
+										<option value="{{ order_status.order_status_id }}" selected="selected">{{ order_status.name }}</option>
+									{% else %}
+										<option value="{{ order_status.order_status_id }}">{{ order_status.name }}</option>
+									{% endif %}
+								{% endfor %}
+							</select>
+						</div>
+					</div>
+
+					<div class="form-group">
+						<label class="col-sm-2 control-label" for="payment_bt_ipay_statusDeclined">{{ label_status_declined }}</label>
+						<div class="col-sm-10">
+							<select name="payment_bt_ipay_statusDeclined" id="payment_bt_ipay_statusDeclined" class="form-control">
+								{% for order_status in order_statuses %}
+									{% if order_status.order_status_id == payment_bt_ipay_statusDeclined %}
+										<option value="{{ order_status.order_status_id }}" selected="selected">{{ order_status.name }}</option>
+									{% else %}
+										<option value="{{ order_status.order_status_id }}">{{ order_status.name }}</option>
+									{% endif %}
+								{% endfor %}
+							</select>
+						</div>
+					</div>
+
+					<div class="form-group">
+						<label class="col-sm-2 control-label" for="payment_bt_ipay_statusRefunded">{{ label_status_refunded }}</label>
+						<div class="col-sm-10">
+							<select name="payment_bt_ipay_statusRefunded" id="payment_bt_ipay_statusRefunded" class="form-control">
+								{% for order_status in order_statuses %}
+									{% if order_status.order_status_id == payment_bt_ipay_statusRefunded %}
+										<option value="{{ order_status.order_status_id }}" selected="selected">{{ order_status.name }}</option>
+									{% else %}
+										<option value="{{ order_status.order_status_id }}">{{ order_status.name }}</option>
+									{% endif %}
+								{% endfor %}
+							</select>
+						</div>
+					</div>
+					<div class="form-group">
+						<label class="align-self-center col-sm-2 control-label" for="payment_bt_ipay_statusPartiallyRefunded">{{ label_status_partially_refunded }}</label>
+						<div class="col-sm-10">
+							<select name="payment_bt_ipay_statusPartiallyRefunded" id="payment_bt_ipay_statusPartiallyRefunded" class="form-control">
+								{% for order_status in order_statuses %}
+									{% if order_status.order_status_id == payment_bt_ipay_statusPartiallyRefunded %}
+										<option value="{{ order_status.order_status_id }}" selected="selected">{{ order_status.name }}</option>
+									{% else %}
+										<option value="{{ order_status.order_status_id }}">{{ order_status.name }}</option>
+									{% endif %}
+								{% endfor %}
+							</select>
+						</div>
+					</div>
+				</div>
+		</div>
+			</form>
+		<p>BT iPay Plugin version: {{version|e }}</p>
+	</div>
+
+		<script>
+			$(function () {
+				const btIpayToggleMode = function () {
+					const showTestMode = $('#bt-ipay-test-mode').val() === '1';
+					$('.ipay-test').toggle(showTestMode);
+					$('.ipay-live').toggle(! showTestMode);
+				}
+
+				btIpayToggleMode();
+				$('#bt-ipay-test-mode').on('change', function () {
+					btIpayToggleMode();
+				})
+				$('#bt-ipay-current_store').on('change', function() {
+					const storeUrl = $(this).find('option:selected').data('url');
+					window.location = storeUrl
+				})
+				setTimeout(function() {
+					$('.bt-ipay-success').fadeOut()
+				},3000)
+
+				$('#bt-ipay-custom-settings').on('change', function() {
+						const showSettings = $('#bt-ipay-custom-settings').val() === '1';
+					$('.bt-ipay-settings').toggle(showSettings);
+				});
+			});
+		</script>
+		{{ footer }}

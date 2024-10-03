@@ -1,0 +1,107 @@
+{{ header }}
+<div id="account-account" class="container">
+  <ul class="breadcrumb">
+    {% for breadcrumb in breadcrumbs %}
+    <li><a href="{{ breadcrumb.href }}">{{ breadcrumb.text }}</a></li>
+    {% endfor %}
+  </ul>
+  {% if success %}
+  <div class="alert alert-success alert-dismissible"><i class="fa fa-check-circle"></i> {{ success }}</div>
+  {% endif %}
+
+  {% if error %}
+  <div class="alert alert-danger alert-dismissible"><i class="fa fa-check-circle"></i> {{ error }}</div>
+  {% endif %}
+
+  <div class="row">{{ column_left }}
+    {% if column_left and column_right %}
+    {% set class = 'col-sm-6' %}
+    {% elseif column_left or column_right %}
+    {% set class = 'col-sm-9' %}
+    {% else %}
+    {% set class = 'col-sm-12' %}
+    {% endif %}
+    <div id="content" class="{{ class }}">{{ content_top }}
+      <h2>{{ title }}</h2>
+		<div class="bt-ipay-add-card-wrap">
+			<form action="{{ actionCreate }}" name="toggle-card" method="post">
+				<input type="hidden" name="cardId" value={{card.id|e}}>
+				<button type="submit" class="btn btn-primay bt-ipay-add-card">
+					{{ add_new_card|e }}
+				</button>
+				<small>
+					{{ add_new_card_desc|e }}
+				</small>
+			</form>
+		</div>
+		 {% if cards|length == 0 %}
+			<div class="alert alert-info" style="margin-top:20px">
+				{{ no_saved_cards|e }}
+			</div>
+		{% else %}
+		<div class="table-responsive" style="margin-top:20px">
+			<table class="table table-bordered">
+				<thead>
+					<tr>
+						<th scope="col">
+							{{ label_card_holder|e }}
+						</th>
+						<th scope="col">
+							{{ label_card_number|e }}
+						</th>
+						<th scope="col">
+							{{ label_expiration|e }}
+						</th>
+						<th scope="col" class="bt-ipay-card-actions" style="text-align:center; width:200px;">
+							{{ label_actions|e }}
+						</th>
+					</tr>
+				</thead>
+				<tbody>
+					{% for card in cards %}
+						{% set isActive = card.status is same as('enabled') %}
+						<tr>
+							<td style="vertical-align: middle;">
+								{{card.cardholderName}}
+							</td>
+							<td style="vertical-align: middle;">
+								{{card.pan}}
+							</td>
+							<td style="vertical-align: middle;">
+								{% set expiration = card.expiration|slice(4,2) ~ '/' ~  card.expiration|slice(0,4) %}
+								{{ expiration|e }}
+							</td>
+							<td>
+								<div class="bt-ipay-actions-wrap" style="display:flex; justify-content:center;">
+									<form action="{{ actionToggle }}" name="toggle-card" method="post">
+										<input type="hidden" name="cardId" value={{card.id|e}}>
+										{% if isActive %}
+											<button type="submit" class="toggle-ipay-card btn btn-warning">
+												{{ label_card_disable|e }}
+											</button>
+										{% else %}
+											<input type="hidden" name="enable" value="true">
+											<button type="submit" class="toggle-ipay-card btn btn-primary">
+												{{ label_card_enable|e }}
+											</button>
+										{% endif %}
+									</form>
+									<form action="{{ actionDelete }}" method="post">
+										<input type="hidden" name="cardId" value={{card.id|e}}>
+										<button type="submit" class="delete-ipay-card btn btn-danger" style="margin-left:10px;">
+											{{ label_card_delete }}
+										</button>
+									</form>
+								</div>
+							</td>
+						</tr>
+					{% endfor %}
+				</tbody>
+			</table>
+			</div>
+			{% endif %}
+		</div>
+      {{ content_bottom }}</div>
+    {{ column_right }}</div>
+</div>
+{{ footer }}

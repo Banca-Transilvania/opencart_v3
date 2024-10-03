@@ -1,0 +1,83 @@
+<div class="panel panel-default">
+  <div class="panel-body bt-ipay-payment-panel">
+		{% if cofEnabled %}
+			{% if cards|length > 0 %}
+				<div class="clearfix checkbox">
+				<label for="bt-ipay-use-new-card" class="bt-ipay-use-new-card">
+					<input type="checkbox" name="bt_ipay_use_new_card" id="bt-ipay-use-new-card" value="yes">
+					{{ label_want_new_card|e }}
+				</label>
+				</div>
+				<div class="clearfix">
+				<label for="bt-card-id" class="bt-ipay-card-list">
+					{{ label_select_new_card|e }}
+					<select name="bt_ipay_card_id" id="bt-card-id" class="form-control bt-ipay-card-select">
+						{% for card in cards %}
+							<option value="{{card.id|e}}">{{card.pan|e ~ " - " ~ card.cardholderName|e }}</option>
+						{% endfor %}
+					</select>
+				</label>
+				</div>
+			{% endif %}
+			<div class="clearfix checkbox">
+			<label for="bt-ipay-save-cards" class="bt-save-card-radio" {% if cards|length > 0 %} style="display:none" {% endif %}>
+				<input type="checkbox" name="bt_ipay_save_cards" id="bt-ipay-save-cards" value="save">
+				{{ label_save_card|e }}
+			</label>
+			</div>
+		{% endif %}
+
+		<div class="buttons clearfix">
+			<div class="pull-right">
+				<input type="button" value="{{ button_confirm|e }}" id="button-confirm" data-loading-text="{{ text_loading|e }}" class="btn btn-primary" />
+			</div>
+		</div>
+  </div>
+</div>
+<script type="text/javascript">
+	$('#bt-ipay-use-new-card').on('change', function() {
+		const checked = $(this).is(':checked');
+		$('.bt-ipay-card-list').toggle(!checked);
+		$('.bt-save-card-radio').toggle(checked);
+	});
+	$('#button-confirm').on('click', function() {
+		const saveCard = $('#bt-ipay-save-cards:checked').length  > 0;
+		const newCard = $('#bt-ipay-use-new-card:checked').length > 0;
+		const cardSelector = $('#bt-card-id');
+
+		let payload = {saveCard: saveCard};
+		if (cardSelector.length && !newCard)
+		{
+			payload.selectedCard = cardSelector.val();
+		}
+
+		$.ajax({
+			url: '{{ startPayAction }}',
+			type: "POST", 
+			data: payload,
+			dataType: 'json',
+			beforeSend: function() {
+				$('#button-confirm').button('loading');
+			},
+			complete: function() {
+				$('#button-confirm').button('reset');
+			},
+			success: function(json) {
+				if (json['redirect']) {
+					window.location = json['redirect'];	
+				}
+
+				if (json.error && json.message.length)
+				{
+					$('.bt-ipay-flash').remove();
+					$('.bt-ipay-payment-panel').prepend(
+						`<div class="alert alert-danger bt-ipay-flash">${json.message}</div>`
+					);
+				}
+			},
+			error: function(xhr, ajaxOptions, thrownError) {
+				alert(thrownError + "\r\n" + xhr.statusText + "\r\n" + xhr.responseText);
+			}
+		});
+	});
+</script>
