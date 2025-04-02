@@ -294,4 +294,29 @@ class ModelExtensionPaymentBtIpay extends Model
 		$this->load->model('checkout/order');
 		return $this->model_checkout_order->addOrderHistory($order_id, $order_status_id, $comment);
 	}
+
+	public function getCurrency(): string
+	{
+		return $this->session->data['currency'];
+	}
+
+	public function getOrderTotal(): float
+	{
+		$this->load->model('checkout/order');
+		$totals = $this->model_checkout_order->getOrderTotals($this->session->data['order_id']);
+
+		$totalAmount = 0;
+
+		foreach($totals as $total) {
+			if (isset($total['code']) && $total['code'] === 'total') {
+				$totalAmount = $total['value'];
+			}
+		}
+
+		return $this->currency->convert(
+			floatval($totalAmount),
+			$this->config->get('config_currency'),
+			$this->session->data['currency']
+		);
+	}
 }
