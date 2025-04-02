@@ -11,20 +11,32 @@ class Payload
 
     private $description;
 
-    public function __construct(array $order, string $returnUrl, $cofPayload = null, ?string $description = null)
-    {
+    private float $orderTotal;
+
+    private string $currency;
+
+    public function __construct(
+        array $order,
+        string $returnUrl,
+        float $orderTotal,
+        string $currency,
+        $cofPayload = null,
+        ?string $description = null
+    ) {
         $this->order = $order;
         $this->returnUrl = $returnUrl;
         $this->cofPayload = $cofPayload;
         $this->description = $description;
+        $this->orderTotal = $orderTotal;
+        $this->currency = $currency;
     }
     public function toArray()
     {
         $orderNumber = $this->getOrderAttr('order_id');
         $payload = array(
             'orderNumber' => preg_replace( '/\s+/', '_',$orderNumber . microtime(false)),
-            'amount' => intval(floatval($this->getOrderAttr('total')) * 100),
-            'currency' => $this->getOrderAttr('currency_code'),
+            'amount' => intval(round($this->orderTotal, 2) * 100),
+            'currency' => $this->currency,
             'description' => $this->getFinalDescription($orderNumber),
             'returnUrl' => $this->returnUrl,
             'email' => $this->getEmail(),
