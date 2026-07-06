@@ -125,13 +125,13 @@ class Handler
 			if ($isLoy) {
 				$this->paymentModel->updateLoyStatusAndAmount(
 					$ipayId,
-					StatusService::STATUS_APPROVED,
+					StatusService::STATUS_DEPOSITED,
 					$totalCaptured
 				);
 			} else {
 				$this->paymentModel->updatePaymentStatusAndAmount(
 					$ipayId,
-					StatusService::STATUS_APPROVED,
+					StatusService::STATUS_DEPOSITED,
 					$totalCaptured
 				);
 			}
@@ -252,6 +252,6 @@ class Handler
 	}
 
 	private function getPaymentByiPayId(): ?array {
-		return $this->paymentModel->getPaymentByIpayId($this->getIpayId());
+		return $this->paymentModel->getPaymentByiPayId($this->getIpayId());
 	}
 }

@@ -319,7 +319,7 @@ class Bt_Ipay
 		return JWT::decode(
 			file_get_contents( 'php://input' ),
 			JWT::urlsafeB64Decode(
-				$paymentModel->getConfig('callbackKey')
+				Encrypt::decrypt($paymentModel->getConfig('callbackKey'))
 			)
 		);
 	}

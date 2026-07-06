@@ -69,7 +69,7 @@ class Payload
         $description = preg_replace('/\{order_number\}/', $orderNumber, $description);
         $description = preg_replace('/\{shop_name\}/', $this->getOrderAttr('store_name'), (string)$description);
 
-        if (!is_string($this->description) || strlen($this->description) === 0) {
+        if (!is_string($description) || strlen($description) === 0) {
             return $default;
         }
         
