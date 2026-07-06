@@ -440,7 +440,7 @@ class ModelExtensionPaymentBtIpay extends Model
         if ($data === null || !isset($data["success"])) {
             $log->write("Change status response: ".$json);
         }
-        curl_close($curl);
+        unset($curl);
         return $json;
     }
     

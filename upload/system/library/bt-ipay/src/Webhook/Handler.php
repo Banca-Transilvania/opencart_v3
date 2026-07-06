@@ -159,7 +159,7 @@ class Handler
 			$available = $paymentDetails->getTotalAvailable();
 		}
 
-		if (strlen($payment['loy_id'])) {
+		if (($payment['loy_id'] ?? '') !== '') {
 			$paymentDetails = $this->client->getPayment($payment['loy_id']);
 			$refunds = $paymentDetails->getRefunds($ipayId);
 			if (count($refunds))
