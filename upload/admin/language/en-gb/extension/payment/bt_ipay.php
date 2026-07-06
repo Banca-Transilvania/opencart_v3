@@ -54,6 +54,7 @@ $_["label_refund"] = "Refund";
 
 $_["label_payment_amount"] = "Amount";
 $_["loy_prefix"] = "LOY:";
+$_["combined_prefix"] = "Combined status:";
 $_["label_refund_id"] = "Refund id";
 $_["label_refund_amount"] = "Refund amount";
 

@@ -86,7 +86,7 @@ class ReturnHandler
                 'amount' => $response->getAmount(),
                 'loy_id' => $response->getLoyId(),
                 'loy_amount' => $response->getLoyAmount(),
-                'loy_status' => $status === StatusService::STATUS_REVERSED ? StatusService::STATUS_DECLINED : $status,
+                'loy_status' => ($response->getLoyId() === null || $response->getLoyId() === '') ? '' : ($status === StatusService::STATUS_REVERSED ? StatusService::STATUS_DECLINED : $status),
             ]
         );
     }

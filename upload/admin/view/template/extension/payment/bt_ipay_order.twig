@@ -67,7 +67,7 @@
 				</td>
 			</tr>
 			{% if payment.loy_amount > 0 %}
-				<tr>
+			<tr>
 				<td>
 					{{ loy_prefix }} {{ payment.loy_id|e }}
 				</td>
@@ -76,6 +76,14 @@
 				</td>
 				<td style="text-align:right;">
 					{{ payment.loy_status|e }}
+				</td>
+			</tr>
+			<tr>
+				<td colspan="2" style="text-align:right;">
+					{{ combined_prefix|e }}
+				</td>
+				<td style="text-align:right;">
+					{{ payment.combined_status|e }}
 				</td>
 			</tr>
 			{% endif %}
