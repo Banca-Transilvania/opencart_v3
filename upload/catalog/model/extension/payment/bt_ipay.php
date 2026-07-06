@@ -197,7 +197,7 @@ class ModelExtensionPaymentBtIpay extends Model
 
 	public function getPaymentByiPayId(string $ipayId): ?array
 	{
-		$qry = $this->db->query("SELECT `order_id`, `ipay_id`, `loy_id` FROM `" . DB_PREFIX . "bt_ipay_payments` WHERE `ipay_id` = '" . $this->db->escape($ipayId) . "' OR `loy_id` = '" . $this->db->escape($ipayId) . "' LIMIT 1");
+		$qry = $this->db->query("SELECT `order_id`, `ipay_id`, `loy_id`, `status`, `loy_status` FROM `" . DB_PREFIX . "bt_ipay_payments` WHERE `ipay_id` = '" . $this->db->escape($ipayId) . "' OR `loy_id` = '" . $this->db->escape($ipayId) . "' LIMIT 1");
 
 		if ($qry->num_rows && isset($qry->row["order_id"]) && is_scalar($qry->row["order_id"])) {
 			return$qry->row;

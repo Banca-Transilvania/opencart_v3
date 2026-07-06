@@ -6,6 +6,7 @@ use BtIpay\Opencart\Sdk\Client;
 use BtIpay\Opencart\Sdk\Config;
 use BtIpay\Opencart\Order\Message;
 use BtIpay\Opencart\Order\StatusService;
+use BTransilvania\Api\Model\IPayStatuses;
 
 class Handler
 {
@@ -73,11 +74,31 @@ class Handler
 		$this->updatePaymentStatus($ipayId, $paymentStatus, $isLoy);
 
 		$statusService = $this->getStatusService($orderId);
+
+		// Keep the per-leg note for a loyalty callback (preserves history detail).
 		if ($isLoy) {
 			$this->addLoyStatus($paymentStatus, $statusService);
-			return;
 		}
-		$this->updateOrderStatus($paymentStatus, $statusService);
+
+		// Drive the order status from the combined state of both payment legs.
+		// For a single-leg payment this resolves to that leg's own status.
+		$this->updateOrderStatus($this->getCombinedOrderStatus(), $statusService);
+	}
+
+	/**
+	 * Combine the (post-update) statuses of the card and loyalty legs into a
+	 * single order status. Re-reads the row so every status transformation that
+	 * was just persisted (capture, decline, partial refund) is reflected.
+	 *
+	 * @return string
+	 */
+	private function getCombinedOrderStatus(): string
+	{
+		$payment = $this->getPaymentByiPayId();
+		$mainStatus = isset($payment['status']) && strlen($payment['status']) ? $payment['status'] : null;
+		$loyStatus = isset($payment['loy_status']) && strlen($payment['loy_status']) ? $payment['loy_status'] : null;
+
+		return IPayStatuses::getCombinedStatus($mainStatus, $loyStatus) ?? '';
 	}
 
 	private function getPayload(\stdClass $jwt)
