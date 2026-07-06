@@ -20,9 +20,9 @@
             'dev_requirement' => false,
         ),
         'banca-transilvania/ipay-sdk' => array(
-            'pretty_version' => '1.1.1',
-            'version' => '1.1.1.0',
-            'reference' => 'b8e63c50a546cdba7aa86ccbf5e02924eaa19332',
+            'pretty_version' => '1.1.8',
+            'version' => '1.1.8.0',
+            'reference' => '47d858ff0a6818beef6eae2b7fd8ba10a4d6fdc7',
             'type' => 'library',
             'install_path' => __DIR__ . '/../banca-transilvania/ipay-sdk',
             'aliases' => array(),
