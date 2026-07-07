@@ -488,7 +488,6 @@ class ModelExtensionPaymentBtIpay extends Model
 
         $curl = curl_init();
 
-        // Set SSL if required
         if (substr($url, 0, 5) == 'https') {
             curl_setopt($curl, CURLOPT_PORT, 443);
         }
