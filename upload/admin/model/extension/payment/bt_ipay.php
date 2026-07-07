@@ -406,7 +406,7 @@ class ModelExtensionPaymentBtIpay extends Model
      */
     public function addOrderHistory($order_id, $order_status_id, $comment = '')
     {
-        $log = new Log('bt-ipay-status-messages.log');
+        $log = new Log('bt-ipay.log');
 
         $order_id = (int) $order_id;
         $order_status_id = (int) $order_status_id;
@@ -459,7 +459,7 @@ class ModelExtensionPaymentBtIpay extends Model
      */
     private function addOrderHistoryViaApi(int $order_id, int $order_status_id, string $comment)
     {
-        $log = new Log('bt-ipay-status-messages.log');
+        $log = new Log('bt-ipay.log');
 
         $data = array(
             'order_status_id' => $order_status_id,
