@@ -390,6 +390,14 @@ class ModelExtensionPaymentBtIpay extends Model
     /**
      * Add order history
      *
+     * Tries the storefront api/order/history endpoint first so the status
+     * change runs OpenCart's full order pipeline (stock subtraction/restock,
+     * coupon/voucher/reward confirmation, fraud checks, model events). When
+     * that path is unavailable or fails (no configured API user, catalog URL
+     * not self-reachable), falls back to writing the status and history row
+     * directly so the change still lands instead of being silently dropped —
+     * the fallback skips the pipeline side effects.
+     *
      * @param int $order_id
      * @param int $order_status_id
      * @param string $comment
@@ -399,7 +407,59 @@ class ModelExtensionPaymentBtIpay extends Model
     public function addOrderHistory($order_id, $order_status_id, $comment = '')
     {
         $log = new Log('bt-ipay-status-messages.log');
-        $json = array();
+
+        $order_id = (int) $order_id;
+        $order_status_id = (int) $order_status_id;
+
+        $query = $this->db->query("SELECT order_id FROM `" . DB_PREFIX . "order` WHERE order_id = '" . $order_id . "'");
+
+        if (!$query->num_rows) {
+            $log->write('Cannot change status, order not found: ' . $order_id);
+            return '';
+        }
+
+        $json = $this->addOrderHistoryViaApi($order_id, $order_status_id, $comment);
+
+        if ($json !== null) {
+            $data = json_decode($json, true);
+
+            if (is_array($data) && isset($data['success'])) {
+                return $json;
+            }
+        }
+
+        // Preserve the permission gate the api session enforced.
+        if (!$this->user->hasPermission('modify', 'sale/order')) {
+            $log->write('User lacks sale/order modify permission, cannot change status for order: ' . $order_id);
+            return '';
+        }
+
+        $log->write('Api order history call failed, falling back to direct status update for order: ' . $order_id);
+
+        $this->db->query(
+            "UPDATE `" . DB_PREFIX . "order` SET order_status_id = '" . $order_status_id . "', date_modified = NOW() WHERE order_id = '" . $order_id . "'"
+        );
+
+        $this->db->query(
+            "INSERT INTO `" . DB_PREFIX . "order_history` SET order_id = '" . $order_id . "', order_status_id = '" . $order_status_id . "', notify = '0', comment = '" . $this->db->escape($comment) . "', date_added = NOW()"
+        );
+
+        return '';
+    }
+
+    /**
+     * Send the status change through the storefront api/order/history
+     * endpoint so OpenCart's full status-change pipeline runs
+     *
+     * @param int $order_id
+     * @param int $order_status_id
+     * @param string $comment
+     *
+     * @return string|null Raw endpoint response, null when no api session could be created or curl failed
+     */
+    private function addOrderHistoryViaApi(int $order_id, int $order_status_id, string $comment)
+    {
+        $log = new Log('bt-ipay-status-messages.log');
 
         $data = array(
             'order_status_id' => $order_status_id,
@@ -420,12 +480,13 @@ class ModelExtensionPaymentBtIpay extends Model
         }
 
         $session = $this->apiSession();
-        $curl = curl_init();
 
         if ($session === null) {
-            $log->write('Api session is null, cannot change status');
-            return '';
+            $log->write('Api session is null, cannot change status via api');
+            return null;
         }
+
+        $curl = curl_init();
 
         // Set SSL if required
         if (substr($url, 0, 5) == 'https') {
@@ -443,14 +504,15 @@ class ModelExtensionPaymentBtIpay extends Model
 
         $json = curl_exec($curl);
 
-        $data = json_decode($json, true);
+        $data = json_decode((string) $json, true);
         if ($data === null || !isset($data["success"])) {
-            $log->write("Change status response: ".$json);
+            $log->write("Change status response: " . $json);
         }
         unset($curl);
-        return $json;
+
+        return is_string($json) ? $json : null;
     }
-    
+
     /**
      * Create a session with api credentials for the add order history
      * call
@@ -463,13 +525,13 @@ class ModelExtensionPaymentBtIpay extends Model
 		$api_info = $this->model_user_api->getApi($this->config->get('config_api_id'));
         if ($api_info && $this->user->hasPermission('modify', 'sale/order')) {
             $session = new Session($this->config->get('session_engine'), $this->registry);
-            
+
             $session->start();
-                    
+
             $this->model_user_api->deleteApiSessionBySessionId($session->getId());
-            
+
             $this->model_user_api->addApiSession($api_info['api_id'], $session->getId(), $this->request->server['REMOTE_ADDR']);
-            
+
             $session->data['api_id'] = $api_info['api_id'];
             $session->close();
 			return $session;
