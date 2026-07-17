@@ -24,13 +24,17 @@ class Handler
 
 	protected string $lang;
 
-	public function __construct(\stdClass $jwt, $paymentModel, string $lang)
+	/** @var \Log|null */
+	protected $logger;
+
+	public function __construct(\stdClass $jwt, $paymentModel, string $lang, ?Client $client = null, ?\Log $logger = null)
 	{
 		$this->config = new Config($paymentModel, $lang);
 		$this->payload = $this->getPayload($jwt);
 		$this->paymentModel = $paymentModel;
-		$this->client = new Client($this->config);
+		$this->client = $client ?? new Client($this->config);
 		$this->lang = $lang;
+		$this->logger = $logger;
 	}
 
 
@@ -54,7 +58,12 @@ class Handler
 
 		$orderId = isset($payment['order_id']) ? (int) $payment['order_id'] : null;
 		$isLoy = isset($payment['loy_id']) && $payment['loy_id'] === $this->getIpayId();
-		
+
+		// Rows are keyed by the main (card) ipay_id even for loyalty callbacks;
+		// write via the row's own id so the loyalty leg still matches a row.
+		$rowIpayId = (isset($payment['ipay_id']) && is_string($payment['ipay_id']))
+			? $payment['ipay_id']
+			: $ipayId;
 
 		if ($orderId === null) {
 			throw new \Exception('Cannot not determine order id');
@@ -67,21 +76,42 @@ class Handler
 			}
 		}
 
-		if ($paymentStatus === StatusService::STATUS_DEPOSITED && !$this->hasFailed()) {
-			$this->capture($ipayId, $isLoy);
+		// Ignore a late/duplicate APPROVED once the leg is already DEPOSITED —
+		// replaying it would revert the status and overwrite the captured amount.
+		$currentLegStatus = $isLoy
+			? (string) ($payment['loy_status'] ?? '')
+			: (string) ($payment['status'] ?? '');
+		if (
+			$paymentStatus === StatusService::STATUS_APPROVED &&
+			$currentLegStatus === StatusService::STATUS_DEPOSITED
+		) {
+			return;
 		}
 
-		$this->updatePaymentStatus($ipayId, $paymentStatus, $isLoy);
+		// Amount enrichment is best-effort; the status change below must still be
+		// recorded even if the re-fetch fails, or BT keeps retrying the callback.
+		try {
+			if ($paymentStatus === StatusService::STATUS_DEPOSITED && !$this->hasFailed()) {
+				$this->capture($ipayId, $rowIpayId, $isLoy);
+			}
+
+			if ($paymentStatus === StatusService::STATUS_APPROVED && !$this->hasFailed()) {
+				$this->authorize($ipayId, $rowIpayId, $isLoy);
+			}
+		} catch (\Throwable $e) {
+			$this->logEnrichmentFailure($ipayId, $e);
+		}
+
+		$this->updatePaymentStatus($rowIpayId, $paymentStatus, $isLoy);
 
 		$statusService = $this->getStatusService($orderId);
 
-		// Keep the per-leg note for a loyalty callback (preserves history detail).
+		// Keep the per-leg note for loyalty callbacks.
 		if ($isLoy) {
 			$this->addLoyStatus($paymentStatus, $statusService);
 		}
 
-		// Drive the order status from the combined state of both payment legs.
-		// For a single-leg payment this resolves to that leg's own status.
+		// Drive order status from both legs combined (a single leg resolves to itself).
 		$this->updateOrderStatus($this->getCombinedOrderStatus(), $statusService);
 	}
 
@@ -138,24 +168,87 @@ class Handler
 	}
 
 
-	private function capture(string $ipayId, bool $isLoy)
+	private function capture(string $ipayId, string $rowIpayId, bool $isLoy)
 	{
 		$paymentDetails = $this->client->getPayment($ipayId);
 		$totalCaptured = $paymentDetails->getTotalAvailable();
-		if ($totalCaptured > 0) {
-			if ($isLoy) {
-				$this->paymentModel->updateLoyStatusAndAmount(
-					$ipayId,
-					StatusService::STATUS_DEPOSITED,
-					$totalCaptured
-				);
-			} else {
-				$this->paymentModel->updatePaymentStatusAndAmount(
-					$ipayId,
-					StatusService::STATUS_DEPOSITED,
-					$totalCaptured
-				);
-			}
+		if ($totalCaptured <= 0) {
+			return;
+		}
+
+		if ($isLoy) {
+			$this->paymentModel->updateLoyStatusAndAmount(
+				$rowIpayId,
+				StatusService::STATUS_DEPOSITED,
+				$totalCaptured
+			);
+			return;
+		}
+
+		$this->persistMainLeg($rowIpayId, $paymentDetails, StatusService::STATUS_DEPOSITED, $totalCaptured);
+	}
+
+	/**
+	 * Record the authorized amount on APPROVED. If the customer closes the
+	 * browser before finishPayment runs, this callback is the only chance to
+	 * store the amount so the merchant can capture it, so re-fetch and persist.
+	 *
+	 * @return void
+	 */
+	private function authorize(string $ipayId, string $rowIpayId, bool $isLoy)
+	{
+		$paymentDetails = $this->client->getPayment($ipayId);
+		$authorized = $paymentDetails->getAmount();
+		if ($authorized <= 0) {
+			return;
+		}
+
+		if ($isLoy) {
+			$this->paymentModel->updateLoyStatusAndAmount(
+				$rowIpayId,
+				StatusService::STATUS_APPROVED,
+				$authorized
+			);
+			return;
+		}
+
+		$this->persistMainLeg($rowIpayId, $paymentDetails, StatusService::STATUS_APPROVED, $authorized);
+	}
+
+	/**
+	 * Persist the card (main) leg. On a split payment, also record the loyalty
+	 * leg's id/amount so the row stays matchable by loy_id; its status is fetched
+	 * from the loyalty payment itself rather than copied from the card leg.
+	 *
+	 * @param \BtIpay\Opencart\Sdk\DetailResponse $paymentDetails
+	 * @return void
+	 */
+	private function persistMainLeg(string $rowIpayId, $paymentDetails, string $status, float $amount)
+	{
+		$data = [
+			'status' => $status,
+			'amount' => $amount,
+		];
+
+		$loyId = $paymentDetails->getLoyId();
+		if ($loyId !== null && $loyId !== '') {
+			$data['loy_id']     = $loyId;
+			$data['loy_amount'] = $paymentDetails->getLoyAmount();
+			$data['loy_status'] = $this->client->getPayment($loyId)->getStatus();
+		}
+
+		$this->paymentModel->updatePayment($rowIpayId, $data);
+	}
+
+	/**
+	 * Log an amount-enrichment failure without aborting the callback.
+	 *
+	 * @return void
+	 */
+	private function logEnrichmentFailure(string $ipayId, \Throwable $e)
+	{
+		if ($this->logger !== null) {
+			$this->logger->write('BT iPay: could not enrich amount for payment ' . $ipayId . ': ' . (string) $e);
 		}
 	}
 
