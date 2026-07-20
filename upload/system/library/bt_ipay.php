@@ -306,7 +306,7 @@ class Bt_Ipay
     {
         try {
             $jwt = $this->getJWT($paymentModel);
-            (new WebhookHandler($jwt, $paymentModel, $language))->handle();
+            (new WebhookHandler($jwt, $paymentModel, $language, null, $this->logger))->handle();
             return true;
         } catch (\Throwable $th) {
             $this->logger->write((string) $th);
